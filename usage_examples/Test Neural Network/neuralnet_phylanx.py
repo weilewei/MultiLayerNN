@@ -29,7 +29,6 @@ def generate_network(network_shape, weight_arrays):
     next_idx = 0
     weight_array = 0
     local_weight_arrays = weight_arrays
-    print("local_weight_arrays", local_weight_arrays)
     for i in range(0, len(network_shape) - 1):
         cur_idx = i
         next_idx = i + 1
@@ -38,6 +37,7 @@ def generate_network(network_shape, weight_arrays):
         weight_array = 2 * np.random([network_shape[next_idx], network_shape[cur_idx]]) - 1
         local_weight_arrays += weight_array
 
+    print("local_weight_arrays", shape(local_weight_arrays[0]))
     return local_weight_arrays
 
 
@@ -67,14 +67,13 @@ def train_network(input, output, predict_outputs, training_rate, network_shape, 
     '''
     Given an untrained network, inputs and expected outputs, train the network
     '''
-    # print network_weights
-    # print output
     # Our predicted outputs
     current_predict_outputs = predict_outputs
     current_output_temp = 0
     current_output = 0
     local_network_weights = network_weights
     local_input = input
+    # print("-----", input)
     final_error = 0
     final_delta = 0
     next_error = 0
@@ -82,55 +81,64 @@ def train_network(input, output, predict_outputs, training_rate, network_shape, 
     cur_delta = 0
     back_idx = 0
     cur_weight_idx = 0
-    # print("local_network_weights", local_network_weights)
+    # print("--------local_network_weights--------", shape(local_network_weights))
     for network_weight in local_network_weights:
-        print("network_weight", network_weight)
-        print("local_input", local_input)
+        # print("network_weight", shape(network_weight))
+        # print("local_input", shape(local_input))
         current_output_temp = np.dot(network_weight, local_input)
         # Apply the sigmoid function to smooth out and range the outputs
         current_output = sigmoid(current_output_temp)
         current_predict_outputs += current_output
         local_input = current_output
 
-    # # This will be in the reverse order
-    # # Deltas will contain the error along with a few other terms which we come across
-    # # due to how we formulate gradient descent of the neural network
-    # # deltas = []
-    # local_deltas = deltas
-    # # We get these deltas according to the formula for gradient descent
-    # final_error = output - current_predict_outputs[len(current_predict_outputs) - 1]
-    # final_delta = final_error * sigmoid_derivative(current_predict_outputs[len(current_predict_outputs) - 1])
-    # deltas += final_delta
-    #
-    # cur_delta = final_delta
-    # back_idx = len(current_predict_outputs) - 2
-    #
-    # # Delta for layer i requires the weight matrix, delta of layer i+1 and expected output of layer i
-    # # Going backwards (Backprop)
+    # This will be in the reverse order
+    # Deltas will contain the error along with a few other terms which we come across
+    # due to how we formulate gradient descent of the neural network
+    # deltas = []
+    local_deltas = deltas
+    # We get these deltas according to the formula for gradient descent
+    final_error = output - current_predict_outputs[len(current_predict_outputs) - 1]
+    final_delta = final_error * sigmoid_derivative(current_predict_outputs[len(current_predict_outputs) - 1])
+    local_deltas += final_delta
+
+    cur_delta = final_delta
+    back_idx = len(current_predict_outputs) - 2
+
+    # Delta for layer i requires the weight matrix, delta of layer i+1 and expected output of layer i
+    # Going backwards (Backprop)
+
     # for network_weight in local_network_weights[::-1][:-1]:
-    #     next_error = np.dot(np.transpose(network_weight), cur_delta)
-    #     next_delta = next_error * sigmoid_derivative(current_predict_outputs[back_idx])
-    #     deltas = + next_delta
-    #     cur_delta = next_delta
-    #     back_idx -= 1
-    #
-    # cur_weight_idx = len(local_network_weights) - 1
-    #
-    # # These deltas will be in the reverse order, so we move backwards through the layers
-    # for delta in deltas:
-    #     input_used = None
-    #     if cur_weight_idx - 1 < 0:
-    #         input_used = local_input
-    #     else:
-    #         input_used = current_predict_outputs[cur_weight_idx - 1]
-    #
-    #     # The weights of layer i are changed based on the input to layer i (or the output of layer i-1) and the delta of layer i
-    #     # This is again due to the formulation of gradient descent
-    #     local_network_weights[cur_weight_idx] += training_rate * np.dot(delta, np.transpose(input_used))
-    #     cur_weight_idx -= 1
-    #
-    # # print local_network_weights
-    # return local_network_weights
+    # print("local_network_weights", local_network_weights)
+    for i in range(len(local_network_weights) - 1, 1, -1):
+        network_weight = local_network_weights[i]
+        next_error = np.dot(np.transpose(network_weight), cur_delta)
+        next_delta = next_error * sigmoid_derivative(current_predict_outputs[back_idx])
+        local_deltas += next_delta
+        cur_delta = next_delta
+        back_idx -= 1
+
+    cur_weight_idx = len(local_network_weights) - 1
+    # print("local_input", local_input)
+
+    # These deltas will be in the reverse order, so we move backwards through the layers
+    for delta in local_deltas:
+        input_used = None
+        if cur_weight_idx - 1 < 0:
+            input_used = local_input
+        else:
+            input_used = current_predict_outputs[cur_weight_idx - 1]
+        # The weights of layer i are changed based on the input to layer i (or the output of layer i-1) and the delta of layer i
+        # This is again due to the formulation of gradient descent
+        # print("local_network_weights[cur_weight_idx]", local_network_weights[cur_weight_idx])
+        # print("training_rate * np.dot(delta, np.transpose(input_used))",
+        #       training_rate * np.dot(delta, np.transpose(input_used)))
+        # local_network_weights[cur_weight_idx] += training_rate * np.dot(delta, np.transpose(input_used))
+        # print("local_network_weights", local_network_weights)
+        cur_weight_idx -= 1
+
+    # print("local_network_weights-------------", local_network_weights)
+    # print local_network_weights
+    return local_network_weights
 
 
 @Phylanx(debug=True)
@@ -140,15 +148,13 @@ def train_network_main(input, outputs, predict_outputs, training_rate, network_s
     '''
     # Train the network multiple times to make it more accurate
     # local_input = input
-    # print("train_network_main-local_input", local_input, '\n')
     local_outputs = outputs
     local_predict_outputs = predict_outputs
     local_network_shape = network_shape
     weight_arrays = network_weights
-    for i in range(10000):
+    for i in range(3):
         weight_arrays = train_network(input, local_outputs, local_predict_outputs, training_rate,
                                       local_network_shape, weight_arrays, deltas)
-        # print("weight_arrays", weight_arrays)
     return weight_arrays
 
 
@@ -164,15 +170,13 @@ shape = [4, 3, 2, 1]
 
 weight_arrays = []
 weights = generate_network(shape, weight_arrays)
-# print(weights)
 
 training_rate = 0.3
-# print("This is weights", weights)
 predict_outputs = []
 deltas = []
 weights = train_network_main(inputs, outputs, predict_outputs, training_rate, shape, weights, deltas)
 
-test_input = np.transpose(np.array([[0, 0, 1, 1]]))
-predict_outputs = []
-test_output = run_network(predict_outputs, test_input, shape, weights)
-print(test_output)
+# test_input = np.transpose(np.array([[0, 0, 1, 1]]))
+# predict_outputs = []
+# test_output = run_network(predict_outputs, test_input, shape, weights)
+# print(test_output)
